@@ -54,69 +54,19 @@ typedef struct sDiscDevice
 }sDiscDevice;
 static sDiscDevice gDevice;
 
-static char *day_of_week[7] = {
-    "Unknown"
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-    "Sunday"
-};
 void ble_store_config_init(void);
 static void ble_cts_cent_scan(void);
 
-static struct ble_gap_conn_params connecting_params = {
+static struct ble_gap_conn_params connecting_params = { //FEDE: se parametri custom, inserire tutti i campi
+    .scan_itvl = 10,
+    .scan_window = 10,
     .itvl_min = 24, // 30 ms
     .itvl_max = 40, // 50 ms
     .latency = 0,
-    .supervision_timeout = 200, // 2 seconds (must be ≤ 3200)
+    .supervision_timeout = 512, 
     .min_ce_len = 0,
     .max_ce_len = 0,
 };
-
-void printtime(struct ble_svc_cts_curr_time ctime) {
-    ESP_LOGI(tag, "Date : %d/%d/%d %s", ctime.et_256.d_d_t.d_t.day,
-                                     ctime.et_256.d_d_t.d_t.month,
-                                     ctime.et_256.d_d_t.d_t.year,
-                                     day_of_week[ctime.et_256.d_d_t.day_of_week]);
-    ESP_LOGI(tag, "hours : %d minutes : %d ",
-                             ctime.et_256.d_d_t.d_t.hours,
-                             ctime.et_256.d_d_t.d_t.minutes);
-    ESP_LOGI(tag, "seconds : %d\n", ctime.et_256.d_d_t.d_t.seconds);
-    ESP_LOGI(tag, "fractions : %d\n", ctime.et_256.fractions_256);
-}
-
-// Application callback. Called when the read of the cts current time characteristic has completed.
-static int ble_cts_cent_on_read(uint16_t conn_handle,
-                                const struct ble_gatt_error *error,
-                                struct ble_gatt_attr *attr,
-                                void *arg)
-{
-    struct ble_svc_cts_curr_time ctime; // store the read time 
-    ESP_LOGI(tag, "Read Current time complete; status=%d conn_handle=%d", error->status, conn_handle);
-    if (error->status == 0) {
-        ESP_LOGI(tag, " attr_handle=%d value=", attr->handle);
-        print_mbuf(attr->om);
-    }else {
-        goto err;
-    }
-    ble_hs_mbuf_to_flat(attr->om, &ctime, sizeof(ctime), NULL);
-    printtime(ctime);
-    return 0;
-err:
-    // Terminate the connection. 
-    return ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM);
-}
-
-//  Performs read on the current time characteristic
-static int ble_cts_cent_read_time(const struct peer *peer)
-{
-    // No CTS requirement: just log connection and keep connection open.
-    ESP_LOGI(tag, "Connected to peer (conn_handle=%d). No CTS check performed.", peer->conn_handle);
-    return 0;
-}
 
 // Initiates the GAP general discovery procedure.
 static void ble_cts_cent_scan(void)
